@@ -1,0 +1,203 @@
+import React, { useState, useEffect } from 'react';
+import { useGetProductByIdQuery, useUpdateProductMutation, useGetCategoriesQuery } from '../services/adminApi';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Upload, ArrowLeft } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const ProductEdit = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    
+    // Correctly using skip to prevent query if id is missing
+    const { data: product, isLoading: isFetching } = useGetProductByIdQuery(id);
+    const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
+    const { data: categories } = useGetCategoriesQuery();
+
+    const [formData, setFormData] = useState({
+        name: '',
+        description: '',
+        price: '',
+        brand: '',
+        category: '',
+        countInStock: '',
+        image: null
+    });
+
+    const [imagePreview, setImagePreview] = useState(null);
+
+    useEffect(() => {
+        if (product) {
+            setFormData({
+                name: product.name || '',
+                description: product.description || '',
+                price: product.price || '',
+                brand: product.brand || '',
+                category: product.category || '', // Assuming category ID comes from backend
+                countInStock: product.countInStock || product.count || '', // Backend might send count or countInStock
+                image: null // Don't set image file, only preview
+            });
+            setImagePreview(product.image);
+        }
+    }, [product]);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setFormData(prev => ({ ...prev, image: file }));
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        const data = new FormData();
+        data.append('name', formData.name);
+        data.append('description', formData.description);
+        data.append('price', formData.price);
+        data.append('brand', formData.brand);
+        data.append('category', formData.category);
+        data.append('countInStock', formData.countInStock);
+        if (formData.image) {
+            data.append('image', formData.image);
+        }
+
+        try {
+            await updateProduct({ id, data }).unwrap();
+            toast.success('Product updated successfully');
+            navigate('/admin/products');
+        } catch (err) {
+            toast.error('Failed to update product');
+            console.error(err);
+        }
+    };
+
+    if (isFetching) return <div className="p-8">Loading product...</div>;
+
+    return (
+        <div className="max-w-4xl mx-auto">
+            <button onClick={() => navigate('/admin/products')} className="flex items-center text-gray-600 mb-6 hover:text-gray-900">
+                <ArrowLeft size={20} className="mr-2" /> Back to Products
+            </button>
+
+            <div className="bg-white rounded-lg shadow p-8">
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Edit Product</h2>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
+                            <input
+                                type="text"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
+                            <input
+                                type="text"
+                                name="brand"
+                                value={formData.brand}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+                            <input
+                                type="number"
+                                name="price"
+                                value={formData.price}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                required
+                                min="0"
+                                step="0.01"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Count In Stock</label>
+                            <input
+                                type="number"
+                                name="countInStock"
+                                value={formData.countInStock}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                required
+                                min="0"
+                            />
+                        </div>
+                        
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                           <select 
+                                name="category" 
+                                value={formData.category} 
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                required
+                           >
+                               <option value="">Select Category</option>
+                               {categories?.results?.map(cat => (
+                                   <option key={cat.id} value={cat.id}>{cat.name}</option>
+                               ))}
+                           </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            rows="4"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Product Image</label>
+                        <div className="flex items-center gap-4">
+                            <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50">
+                                {imagePreview ? (
+                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <Upload className="text-gray-400" />
+                                )}
+                            </div>
+                            <label className="cursor-pointer bg-white px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                Change Image
+                                <input type="file" className="hidden" onChange={handleImageChange} accept="image/*" />
+                            </label>
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={isUpdating}
+                        className="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 transition disabled:opacity-50 font-semibold"
+                    >
+                        {isUpdating ? 'Updating...' : 'Update Product'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default ProductEdit;
