@@ -4,7 +4,7 @@ import { useAppSelector, useAppDispatch } from "../hooks/reduxHooks";
 import { selectCartItemCount } from "../features/cart/selectors";
 import { selectWishlistCount } from "../features/wishlist/selectors";
 import { selectCurrentUser } from "../features/auth/selectors";
-import { logout } from "../features/auth/authSlice";
+import { logoutUser } from "../features/auth/authSlice";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -21,9 +21,17 @@ const Navbar = () => {
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate('/');
+  /* =========================
+     SECURE LOGOUT (Server + Client)
+  ========================= */
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutUser()).unwrap();
+      navigate("/");
+    } catch (error) {
+      // Even if server fails, force redirect
+      navigate("/");
+    }
   };
 
   // Redirect to login if user is not authenticated
@@ -38,13 +46,14 @@ const Navbar = () => {
   // Hide navbar on scroll down, show on scroll up
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > lastScrollY && window.scrollY > 80) { // Only hide after scrolling a bit
+      if (window.scrollY > lastScrollY && window.scrollY > 80) {
         setShowNavbar(false);
       } else {
         setShowNavbar(true);
       }
       setLastScrollY(window.scrollY);
     };
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
@@ -82,8 +91,12 @@ const Navbar = () => {
 
             {/* Icons / Login */}
             <div className="hidden md:flex items-center space-x-6">
+              
+              {/* Cart */}
               <div onClick={() => handleProtectedClick("/cart")} className="relative text-gray-700 hover:text-black transition cursor-pointer group">
-                <svg className="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                <svg className="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
                 {cartItemCount > 0 && currentUser && (
                   <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
                     {cartItemCount}
@@ -91,8 +104,11 @@ const Navbar = () => {
                 )}
               </div>
 
+              {/* Wishlist */}
               <div onClick={() => handleProtectedClick("/wishlist")} className="relative text-gray-700 hover:text-black transition cursor-pointer group">
-                <svg className="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                <svg className="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
                 {wishlistCount > 0 && currentUser && (
                   <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
                     {wishlistCount}
@@ -106,8 +122,12 @@ const Navbar = () => {
                 </Link>
               ) : (
                 <>
-                  <Link to="/profile" className="text-gray-700 hover:text-black transition font-medium">Profile</Link>
-                  <button onClick={handleLogout} className="text-gray-700 hover:text-red-600 transition font-medium">Logout</button>
+                  <Link to="/profile" className="text-gray-700 hover:text-black transition font-medium">
+                    Profile
+                  </Link>
+                  <button onClick={handleLogout} className="text-gray-700 hover:text-red-600 transition font-medium">
+                    Logout
+                  </button>
                 </>
               )}
             </div>
@@ -115,7 +135,11 @@ const Navbar = () => {
             {/* Mobile Menu Button */}
             <div className="md:hidden">
               <button onClick={toggleMenu} className="p-2 focus:outline-none text-black">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} /></svg>
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                    d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
+                  />
+                </svg>
               </button>
             </div>
           </div>
@@ -129,23 +153,32 @@ const Navbar = () => {
               <Link to="/products" className="block px-3 py-3 rounded-lg text-lg font-medium text-gray-900 hover:bg-gray-50" onClick={toggleMenu}>Products</Link>
               <Link to="/about" className="block px-3 py-3 rounded-lg text-lg font-medium text-gray-900 hover:bg-gray-50" onClick={toggleMenu}>About</Link>
               <Link to="/contact" className="block px-3 py-3 rounded-lg text-lg font-medium text-gray-900 hover:bg-gray-50" onClick={toggleMenu}>Contact</Link>
+
               <div className="border-t border-gray-100 my-2"></div>
+
               <div onClick={() => { toggleMenu(); handleProtectedClick("/cart"); }} className="block px-3 py-3 rounded-lg text-lg font-medium text-gray-900 hover:bg-gray-50 cursor-pointer">Cart</div>
               <div onClick={() => { toggleMenu(); handleProtectedClick("/wishlist"); }} className="block px-3 py-3 rounded-lg text-lg font-medium text-gray-900 hover:bg-gray-50 cursor-pointer">Wishlist</div>
+
               <div className="border-t border-gray-100 my-2"></div>
+
               {!currentUser ? (
-                <Link to="/login" onClick={toggleMenu} className="block w-full text-center px-4 py-3 bg-black text-white rounded-lg text-lg font-medium hover:bg-gray-800 transition">Login</Link>
+                <Link to="/login" onClick={toggleMenu} className="block w-full text-center px-4 py-3 bg-black text-white rounded-lg text-lg font-medium hover:bg-gray-800 transition">
+                  Login
+                </Link>
               ) : (
                 <>
-                  <Link to="/profile" onClick={toggleMenu} className="block px-3 py-3 rounded-lg text-lg font-medium text-gray-900 hover:bg-gray-50">Profile</Link>
-                  <button onClick={() => { toggleMenu(); handleLogout(); }} className="block w-full text-left px-3 py-3 rounded-lg text-lg font-medium text-red-600 hover:bg-red-50">Logout</button>
+                  <Link to="/profile" onClick={toggleMenu} className="block px-3 py-3 rounded-lg text-lg font-medium text-gray-900 hover:bg-gray-50">
+                    Profile
+                  </Link>
+                  <button onClick={() => { toggleMenu(); handleLogout(); }} className="block w-full text-left px-3 py-3 rounded-lg text-lg font-medium text-red-600 hover:bg-red-50">
+                    Logout
+                  </button>
                 </>
               )}
             </div>
           </div>
         )}
       </nav>
-      {/* Spacer removed from here */}
     </>
   );
 };

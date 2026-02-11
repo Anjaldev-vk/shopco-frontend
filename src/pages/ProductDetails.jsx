@@ -158,7 +158,7 @@ const ProductDetails = () => {
                </>
              ) : (
                <span className="text-3xl font-bold text-black">
-                 {formatPrice(product.price)}
+                 {formatPrice(product.final_price)}
                </span>
              )}
            </div>

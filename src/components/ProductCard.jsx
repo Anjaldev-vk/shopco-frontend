@@ -121,7 +121,7 @@ const ProductCard = ({ product }) => {
             </>
           ) : (
             <p className="text-xl font-bold text-black">
-              {formatPrice(product.price)}
+              {formatPrice(product.final_price)}
             </p>
           )}
         </div>

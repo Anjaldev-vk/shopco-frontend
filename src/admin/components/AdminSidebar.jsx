@@ -1,16 +1,28 @@
-
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/reduxHooks';
-import { logout } from '../../features/auth/authSlice';
+import { logoutUser } from '../../features/auth/authSlice';
 import { LayoutDashboard, ShoppingBag, Users, LogOut, Package, X } from 'lucide-react';
 
 const AdminSidebar = ({ isOpen, onClose }) => {
     const dispatch = useAppDispatch();
     const location = useLocation();
+    const navigate = useNavigate();
 
-    const handleLogout = () => {
-        dispatch(logout());
-        window.location.href = "/"; 
+    /* =========================
+       SECURE ADMIN LOGOUT
+       (calls Django logout view)
+    ========================= */
+    const handleLogout = async () => {
+        try {
+            // call backend logout (blacklist refresh token)
+            await dispatch(logoutUser()).unwrap();
+
+            // redirect after successful logout
+            navigate('/');
+        } catch (error) {
+            // even if backend fails, force exit admin
+            navigate('/');
+        }
     };
 
     const isActive = (path) => location.pathname === path;
@@ -32,8 +44,12 @@ const AdminSidebar = ({ isOpen, onClose }) => {
             {/* Logo & Close Button */}
             <div className="mb-12 px-2 flex justify-between items-center">
                 <Link to="/" className="text-2xl font-black tracking-tighter uppercase text-black">
-                    SHOP.CO <span className="text-xs font-bold bg-black text-white px-2 py-0.5 rounded ml-1 tracking-normal align-middle">ADMIN</span>
+                    SHOP.CO 
+                    <span className="text-xs font-bold bg-black text-white px-2 py-0.5 rounded ml-1 tracking-normal align-middle">
+                        ADMIN
+                    </span>
                 </Link>
+
                 <button onClick={onClose} className="lg:hidden text-gray-400 hover:text-black">
                     <X size={24} />
                 </button>
@@ -45,7 +61,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
                     <Link 
                         key={item.path} 
                         to={item.path} 
-                        onClick={() => onClose()} // Close sidebar on mobile when link clicked
+                        onClick={() => onClose()}
                         className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${
                             isActive(item.path) 
                             ? 'bg-black text-white shadow-md' 

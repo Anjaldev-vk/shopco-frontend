@@ -101,7 +101,9 @@ function Checkout() {
             
       // 2. Create Order (Backend uses Cart)
       // Note: Backend CreateOrderView ignores body, but we call it to trigger creation from Cart.
-      const result = await createOrder({}).unwrap();
+      const result = await createOrder({ 
+        payment_method: formData.paymentMethod 
+      }).unwrap();
       
       toast.success('Order placed successfully!');
       

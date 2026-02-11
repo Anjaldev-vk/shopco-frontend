@@ -32,7 +32,7 @@ export const validatePassword = (password) => {
 };
 
 /**
- * Validate phone number (Indian format)
+
  * @param {string} phone - Phone number to validate
  * @returns {boolean} - True if valid
  */

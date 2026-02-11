@@ -2,7 +2,9 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/axiosBaseQuery';
 import { jwtDecode } from 'jwt-decode';
 
-// Helper function to check token validity
+/* =========================
+   Helper: Check token validity
+========================= */
 const isTokenValid = (token) => {
   if (!token) return false;
   try {
@@ -14,12 +16,14 @@ const isTokenValid = (token) => {
   }
 };
 
-// Async thunks
+/* =========================
+   Restore Session (page refresh login)
+========================= */
 export const restoreSession = createAsyncThunk(
   'auth/restoreSession',
   async (_, { rejectWithValue }) => {
     const accessToken = sessionStorage.getItem('accessToken');
-    
+
     if (accessToken && isTokenValid(accessToken)) {
       try {
         const response = await api.get('/api/accounts/profile/');
@@ -34,6 +38,9 @@ export const restoreSession = createAsyncThunk(
   }
 );
 
+/* =========================
+   LOGIN
+========================= */
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
@@ -46,19 +53,25 @@ export const login = createAsyncThunk(
 
       return user;
     } catch (error) {
-      if (error.response?.data) {
-        return rejectWithValue(error.response.data);
-      }
+      if (error.response?.data) return rejectWithValue(error.response.data);
       return rejectWithValue({ error: 'Login failed. Please check your credentials.' });
     }
   }
 );
 
+/* =========================
+   SIGNUP
+========================= */
 export const signup = createAsyncThunk(
   'auth/signup',
   async ({ name, email, password, re_password }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/api/accounts/register/', { name, email, password, re_password });
+      const response = await api.post('/api/accounts/register/', {
+        name,
+        email,
+        password,
+        re_password,
+      });
       return response.data;
     } catch (error) {
       if (error.response?.data) {
@@ -70,6 +83,9 @@ export const signup = createAsyncThunk(
   }
 );
 
+/* =========================
+   OTP VERIFY
+========================= */
 export const verifyOtp = createAsyncThunk(
   'auth/verifyOtp',
   async ({ email, otp }, { rejectWithValue }) => {
@@ -82,6 +98,9 @@ export const verifyOtp = createAsyncThunk(
   }
 );
 
+/* =========================
+   RESEND OTP
+========================= */
 export const resendOtp = createAsyncThunk(
   'auth/resendOtp',
   async ({ email }, { rejectWithValue }) => {
@@ -94,6 +113,9 @@ export const resendOtp = createAsyncThunk(
   }
 );
 
+/* =========================
+   FORGOT PASSWORD
+========================= */
 export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async ({ email }, { rejectWithValue }) => {
@@ -106,11 +128,18 @@ export const forgotPassword = createAsyncThunk(
   }
 );
 
+/* =========================
+   RESET PASSWORD
+========================= */
 export const resetPassword = createAsyncThunk(
   'auth/resetPassword',
   async ({ email, otp, new_password }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/api/accounts/password-reset-confirm/', { email, otp, new_password });
+      const response = await api.post('/api/accounts/password-reset-confirm/', {
+        email,
+        otp,
+        new_password,
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue({ error: error.response?.data?.error || 'Password reset failed.' });
@@ -118,6 +147,9 @@ export const resetPassword = createAsyncThunk(
   }
 );
 
+/* =========================
+   UPDATE PROFILE
+========================= */
 export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async (userData, { rejectWithValue }) => {
@@ -125,15 +157,40 @@ export const updateProfile = createAsyncThunk(
       const response = await api.put('/api/accounts/profile/', userData);
       return response.data;
     } catch (error) {
-      if (error.response?.data) {
-        return rejectWithValue(error.response.data);
-      }
+      if (error.response?.data) return rejectWithValue(error.response.data);
       return rejectWithValue({ error: 'Profile update failed.' });
     }
   }
 );
 
-// Initial state
+/* =========================
+   LOGOUT (IMPORTANT)
+   Calls Django LogoutView
+========================= */
+export const logoutUser = createAsyncThunk(
+  'auth/logoutUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      // backend logout → blacklists refresh cookie
+      await api.post('/api/accounts/logout/');
+
+      // clear local tokens
+      sessionStorage.removeItem('accessToken');
+      sessionStorage.removeItem('refreshToken');
+
+      return true;
+    } catch (error) {
+      // even if API fails, force local logout
+      sessionStorage.removeItem('accessToken');
+      sessionStorage.removeItem('refreshToken');
+      return rejectWithValue('Logout failed');
+    }
+  }
+);
+
+/* =========================
+   Initial State
+========================= */
 const initialState = {
   currentUser: null,
   loading: true,
@@ -141,24 +198,21 @@ const initialState = {
   isAdmin: false,
 };
 
-// Auth slice
+/* =========================
+   Slice
+========================= */
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    logout: (state) => {
-      state.currentUser = null;
-      state.isAdmin = false;
-      sessionStorage.removeItem('accessToken');
-      sessionStorage.removeItem('refreshToken');
-    },
     clearError: (state) => {
       state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      // Restore session
+
+      // Restore Session
       .addCase(restoreSession.pending, (state) => {
         state.loading = true;
       })
@@ -172,6 +226,7 @@ const authSlice = createSlice({
         state.currentUser = null;
         state.isAdmin = false;
       })
+
       // Login
       .addCase(login.pending, (state) => {
         state.loading = true;
@@ -181,67 +236,29 @@ const authSlice = createSlice({
         state.loading = false;
         state.currentUser = action.payload;
         state.isAdmin = action.payload?.role === 'ADMIN';
-        state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      // Signup
-      .addCase(signup.pending, (state) => {
+
+      // Logout
+      .addCase(logoutUser.pending, (state) => {
         state.loading = true;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.loading = false;
+        state.currentUser = null;
+        state.isAdmin = false;
         state.error = null;
       })
-      .addCase(signup.fulfilled, (state) => {
+      .addCase(logoutUser.rejected, (state) => {
         state.loading = false;
-        state.error = null;
-      })
-      .addCase(signup.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // Forgot Password
-      .addCase(forgotPassword.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(forgotPassword.fulfilled, (state) => {
-        state.loading = false;
-        state.error = null;
-      })
-      .addCase(forgotPassword.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // Reset Password
-      .addCase(resetPassword.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(resetPassword.fulfilled, (state) => {
-        state.loading = false;
-        state.error = null;
-      })
-      .addCase(resetPassword.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // Update Profile
-      .addCase(updateProfile.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateProfile.fulfilled, (state, action) => {
-        state.loading = false;
-        state.currentUser = action.payload;
-        state.error = null;
-      })
-      .addCase(updateProfile.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.currentUser = null;
+        state.isAdmin = false;
       });
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { clearError } = authSlice.actions;
 export default authSlice.reducer;
