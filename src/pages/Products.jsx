@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetProductsQuery } from '../features/products/productApi';
 import { useAppDispatch, useAppSelector } from '../hooks/reduxHooks';
@@ -21,26 +21,47 @@ function Products() {
   const [showFilters, setShowFilters] = useState(false);
   const itemsPerPage = 12;
 
-  // Fetch all products
+  // 1. Fetch products from your backend
   const { data, isLoading, error } = useGetProductsQuery({});
 
-  const allProducts = Array.isArray(data) ? data : data?.results || [];
+  const allProducts = useMemo(() => {
+    return Array.isArray(data) ? data : data?.results || [];
+  }, [data]);
 
-  // Extract Unique Categories dynamically
+  // 2. DYNAMIC MAX PRICE CALCULATION
+  // This identifies that 12,000.00 is your current highest price
+  const maxProductPrice = useMemo(() => {
+    if (allProducts.length === 0) return 10000; // Default until data loads
+    const prices = allProducts.map(p => parseFloat(p.price || 0));
+    return Math.ceil(Math.max(...prices));
+  }, [allProducts]);
+
+  // 3. AUTO-SYNC REDUX STATE
+  // This ensures your "Price Limit" filter starts at the actual maximum (e.g. 12,000)
+  // so that the expensive products aren't filtered out by default.
+  useEffect(() => {
+    if (allProducts.length > 0) {
+      dispatch(setPriceRange([0, maxProductPrice]));
+    }
+  }, [maxProductPrice, dispatch, allProducts.length]);
+
+  // Extract Unique Categories
   const categories = ['all', ...new Set(allProducts.map(p => p.category?.name || p.category).filter(Boolean))];
 
-  // Client-side Filtering Logic
+  // 4. Filtering Logic
   const filteredProducts = allProducts.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(debouncedSearch.toLowerCase());
     const productCategory = product.category?.name || product.category;
     const matchesCategory = filters.category === 'all' || productCategory === filters.category;
     const price = parseFloat(product.price);
+    
+    // Check against the Redux filter state
     const matchesPrice = price >= filters.priceRange[0] && price <= filters.priceRange[1];
 
     return matchesSearch && matchesCategory && matchesPrice;
   });
 
-  // Client-side Sorting Logic
+  // Sorting Logic
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     switch (filters.sortBy) {
       case 'price-low':
@@ -77,7 +98,7 @@ function Products() {
   const clearFilters = () => {
       dispatch(setCategory('all'));
       dispatch(setSearchQuery(''));
-      dispatch(setPriceRange([0, 50000]));
+      dispatch(setPriceRange([0, maxProductPrice]));
       setCurrentPage(1);
   };
 
@@ -98,7 +119,6 @@ function Products() {
         {/* Filter Bar */}
         <div className="top-16 z-30 bg-white border-y border-black/10 py-3 mb-8 flex justify-between items-center transition-all">
            
-           {/* Left: Filter Toggle */}
            <button 
              onClick={() => setShowFilters(!showFilters)}
              className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest hover:opacity-60 transition-opacity"
@@ -107,7 +127,6 @@ function Products() {
              {showFilters ? 'Hide Filters' : 'Filter Selection'}
            </button>
 
-           {/* Right: Premium Sort Selection */}
            <div className="flex items-center gap-4">
               <span className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] hidden sm:inline">
                 Sort By
@@ -131,8 +150,6 @@ function Products() {
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-300 group-hover:translate-y-[-40%]">
                   <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
                 </div>
-                
-                <div className="absolute bottom-0 left-0 w-0 h-[1px] bg-black transition-all duration-500 group-hover:w-full" />
               </div>
            </div>
         </div>
@@ -182,8 +199,8 @@ function Products() {
                    <input
                       type="range"
                       min="0"
-                      max="10000"
-                      step="100"
+                      max={maxProductPrice} // Dynamic max
+                      step="1"
                       value={filters.priceRange[1]}
                       onChange={(e) => dispatch(setPriceRange([0, parseInt(e.target.value)]))}
                       className="w-full accent-black h-[2px] bg-gray-200 appearance-none cursor-pointer mb-4"

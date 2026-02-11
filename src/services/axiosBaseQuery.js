@@ -1,63 +1,112 @@
-import axios from 'axios';
+import axios from "axios";
 
-// Create axios instance
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
-// Request interceptor to add JWT token
+
 api.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const access = sessionStorage.getItem("accessToken");
+
+    if (access) {
+      config.headers.Authorization = `Bearer ${access}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for token refresh
+
+
+let isRefreshing = false;
+let failedQueue = [];
+
+// queue helper
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else prom.resolve(token);
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
+
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = sessionStorage.getItem('refreshToken');
-        if (refreshToken) {
-          const response = await axios.post(
-            `${api.defaults.baseURL}/api/accounts/token/refresh/`,
-            { refresh: refreshToken }
-          );
-
-          const { access } = response.data;
-          sessionStorage.setItem('accessToken', access);
-
-          originalRequest.headers.Authorization = `Bearer ${access}`;
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        sessionStorage.removeItem('accessToken');
-        sessionStorage.removeItem('refreshToken');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
+    // if not 401 -> normal error
+    if (error.response?.status !== 401) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    // prevent infinite loop
+    if (originalRequest._retry) {
+      sessionStorage.removeItem("accessToken");
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    // If refresh already running → queue requests
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({
+          resolve: (token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          },
+          reject: (err) => reject(err),
+        });
+      });
+    }
+
+    isRefreshing = true;
+
+    try {
+
+      const res = await axios.post(
+        `${api.defaults.baseURL}/api/accounts/token/refresh/`,
+        {},
+        { withCredentials: true }
+      );
+
+      const newAccess = res.data.access;
+
+      sessionStorage.setItem("accessToken", newAccess);
+
+      api.defaults.headers.Authorization = `Bearer ${newAccess}`;
+
+      processQueue(null, newAccess);
+
+      originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+      return api(originalRequest);
+
+    } catch (refreshError) {
+      processQueue(refreshError, null);
+
+      sessionStorage.removeItem("accessToken");
+      window.location.href = "/login";
+      return Promise.reject(refreshError);
+
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 
-// Axios base query for RTK Query
-export const axiosBaseQuery = ({ baseUrl } = { baseUrl: '' }) => {
-  return async ({ url, method = 'GET', data, params }) => {
+
+export const axiosBaseQuery = ({ baseUrl } = { baseUrl: "" }) => {
+  return async ({ url, method = "GET", data, params }) => {
     try {
       const result = await api({
         url: baseUrl + url,
@@ -67,11 +116,10 @@ export const axiosBaseQuery = ({ baseUrl } = { baseUrl: '' }) => {
       });
       return { data: result.data };
     } catch (axiosError) {
-      let err = axiosError;
       return {
         error: {
-          status: err.response?.status,
-          data: err.response?.data || err.message,
+          status: axiosError.response?.status,
+          data: axiosError.response?.data || axiosError.message,
         },
       };
     }

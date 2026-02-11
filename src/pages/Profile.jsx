@@ -22,8 +22,8 @@ const Profile = () => {
       setFormData({
         name: currentUser.name || '',
         email: currentUser.email || '',
-        phone: currentUser.phone || '', // Assuming phone is part of user model
-        address: currentUser.address || '', // Assuming address is part of user model
+        phone: currentUser.phone || '', 
+        address: currentUser.address || '', 
       });
     }
   }, [currentUser]);
