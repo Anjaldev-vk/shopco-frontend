@@ -35,6 +35,13 @@ export const productApi = createApi({
       }),
       providesTags: ['Products'],
     }),
+    getCategories: builder.query({
+      query: () => ({
+        url: '/api/categories/',
+        method: 'GET',
+      }),
+      providesTags: ['Products'],
+    }),
   }),
 });
 
@@ -43,4 +50,5 @@ export const {
   useGetProductBySlugQuery,
   useGetNewArrivalsQuery,
   useGetTopSellingQuery,
+  useGetCategoriesQuery,
 } = productApi;

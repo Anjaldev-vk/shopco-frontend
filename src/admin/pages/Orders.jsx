@@ -10,23 +10,29 @@ const Orders = () => {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
 
+    const [page, setPage] = useState(1);
+
     // Debounce search
     useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(search), 500);
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+            setPage(1); // Reset to page 1 on search
+        }, 500);
         return () => clearTimeout(timer);
     }, [search]);
 
-    const queryParams = {};
+    const queryParams = { page };
     if (debouncedSearch) queryParams.search = debouncedSearch;
     if (statusFilter) queryParams.status = statusFilter;
 
-    const { data: orders, isLoading, error } = useGetOrdersQuery(queryParams); 
+    const { data, isLoading, error } = useGetOrdersQuery(queryParams); 
     const [updateOrderStatus] = useUpdateOrderStatusMutation();
 
     if (isLoading) return <div className="p-4">Loading orders...</div>;
     if (error) return <div className="p-4 text-red-500">Error loading orders</div>;
 
-    const orderList = Array.isArray(orders) ? orders : orders?.results || [];
+    const orderList = data?.results || [];
+    const totalPages = Math.ceil((data?.count || 0) / 10);
 
     const handleStatusChange = async (orderId, newStatus) => {
         try {
@@ -35,6 +41,13 @@ const Orders = () => {
         } catch (err) {
             toast.error('Failed to update status');
             console.error(err);
+        }
+    };
+
+    const handlePageChange = (newPage) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setPage(newPage);
+            window.scrollTo(0,0);
         }
     };
 
@@ -74,7 +87,10 @@ const Orders = () => {
                     <div className="relative w-full md:w-48">
                          <select
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
+                            onChange={(e) => {
+                                setStatusFilter(e.target.value);
+                                setPage(1); // Reset page on filter change
+                            }}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white"
                         >
                             <option value="">All Statuses</option>
@@ -89,7 +105,7 @@ const Orders = () => {
                 </div>
             </div>
             
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -155,6 +171,29 @@ const Orders = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-6 mb-8">
+                    <button
+                        onClick={() => handlePageChange(page - 1)}
+                        disabled={page === 1}
+                        className="px-4 py-2 border rounded-md disabled:opacity-50 hover:bg-gray-50"
+                    >
+                        Previous
+                    </button>
+                    <span className="text-sm text-gray-600">
+                        Page {page} of {totalPages}
+                    </span>
+                    <button
+                        onClick={() => handlePageChange(page + 1)}
+                        disabled={page === totalPages}
+                        className="px-4 py-2 border rounded-md disabled:opacity-50 hover:bg-gray-50"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

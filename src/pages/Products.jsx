@@ -1,13 +1,14 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetProductsQuery } from '../features/products/productApi';
+import { useGetProductsQuery, useGetCategoriesQuery } from '../features/products/productApi';
 import { useAppDispatch, useAppSelector } from '../hooks/reduxHooks';
-import { setCategory, setPriceRange, setSortBy, setSearchQuery } from '../features/products/productSlice';
-import { selectProductFilters, selectProductSearchQuery } from '../features/products/selectors';
+import { setCategory, setPriceRange, setSortBy, setSearchQuery, setPage } from '../features/products/productSlice';
+import { selectProductFilters, selectProductSearchQuery, selectProductPagination } from '../features/products/selectors';
 import { useDebounce } from '../hooks/useDebounce';
 import { formatPrice } from '../utils/formatPrice';
 import ProductCard from '../components/ProductCard';
 import { Search, ChevronDown, ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react';
+import { useState } from 'react';
 
 function Products() {
   const navigate = useNavigate();
@@ -15,88 +16,96 @@ function Products() {
   
   const filters = useAppSelector(selectProductFilters);
   const searchQuery = useAppSelector(selectProductSearchQuery);
+  const pagination = useAppSelector(selectProductPagination);
+  const { currentPage } = pagination;
+
   const debouncedSearch = useDebounce(searchQuery, 500);
   
-  const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
-  const itemsPerPage = 12;
+  const itemsPerPage = 4; // Request 8 items per page from server
 
-  // 1. Fetch products from your backend
-  const { data, isLoading, error } = useGetProductsQuery({});
-
-  const allProducts = useMemo(() => {
-    return Array.isArray(data) ? data : data?.results || [];
-  }, [data]);
-
-
-  const maxProductPrice = useMemo(() => {
-    if (allProducts.length === 0) return 10000; // Default until data loads
-    const prices = allProducts.map(p => parseFloat(p.price || 0));
-    return Math.ceil(Math.max(...prices));
-  }, [allProducts]);
-
-
-  useEffect(() => {
-    if (allProducts.length > 0) {
-      dispatch(setPriceRange([0, maxProductPrice]));
+  // Helper to map UI sort values to API ordering fields
+  const getOrderingValue = (sortBy) => {
+    switch (sortBy) {
+      case 'price-low': return 'price';
+      case 'price-high': return '-price';
+      case 'name': return 'name';
+      case 'newest': return '-created_at';
+      default: return '-created_at';
     }
-  }, [maxProductPrice, dispatch, allProducts.length]);
+  };
 
-  // Extract Unique Categories
-  const categories = ['all', ...new Set(allProducts.map(p => p.category?.name || p.category).filter(Boolean))];
-
-  // 4. Filtering Logic
-  const filteredProducts = allProducts.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(debouncedSearch.toLowerCase());
-    const productCategory = product.category?.name || product.category;
-    const matchesCategory = filters.category === 'all' || productCategory === filters.category;
-    const price = parseFloat(product.price);
+  // Construct query params for the API
+  const queryParams = useMemo(() => {
+    const params = {
+      page: currentPage,
+      page_size: itemsPerPage,
+      ordering: getOrderingValue(filters.sortBy),
+    };
     
-    // Check against the Redux filter state
-    const matchesPrice = price >= filters.priceRange[0] && price <= filters.priceRange[1];
-
-    return matchesSearch && matchesCategory && matchesPrice;
-  });
-
-  // Sorting Logic
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (filters.sortBy) {
-      case 'price-low':
-        return parseFloat(a.price) - parseFloat(b.price);
-      case 'price-high':
-        return parseFloat(b.price) - parseFloat(a.price);
-      case 'name':
-        return a.name.localeCompare(b.name);
-      case 'newest':
-        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-      default:
-        return 0;
+    if (filters.category !== 'all') {
+      params.category = filters.category;
     }
-  });
+    
+    if (debouncedSearch) {
+      params.search = debouncedSearch;
+    }
 
-  const totalItems = sortedProducts.length;
-  const displayedProducts = sortedProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    if (filters.priceRange[0] > 0) params.min_price = filters.priceRange[0];
+    if (filters.priceRange[1] < 10000) params.max_price = filters.priceRange[1];
+
+    return params;
+  }, [currentPage, filters, debouncedSearch]);
+
+  // ...
+
+
+
+  // Fetch products from backend with params
+  const { data, isLoading, error } = useGetProductsQuery(queryParams);
+
+  const products = data?.results || [];
+  const totalItems = data?.count || 0;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  // We can't easily calculate max price of *all* products from a paginated response.
+  // For now, we'll keep the slider max at a static value or a high default.
+  // Alternatively, the backend could return metadata about min/max prices.
+  const maxProductPrice = 10000; 
+
+  // Fetch categories
+  const { data: categoriesData } = useGetCategoriesQuery();
+  const categories = useMemo(() => {
+    const cats = Array.isArray(categoriesData) ? categoriesData : categoriesData?.results || [];
+    return ['all', ...cats];
+  }, [categoriesData]);
 
   const handleCategoryChange = (category) => {
-    dispatch(setCategory(category));
-    setCurrentPage(1);
+     // If category is object, pass slug. If 'all', pass 'all'.
+     const value = typeof category === 'string' ? category : category.slug;
+     dispatch(setCategory(value));
   };
 
   const handleSortChange = (e) => {
     dispatch(setSortBy(e.target.value));
-    setCurrentPage(1);
   };
 
   const handleSearchChange = (e) => {
     dispatch(setSearchQuery(e.target.value));
-    setCurrentPage(1);
   };
 
   const clearFilters = () => {
       dispatch(setCategory('all'));
       dispatch(setSearchQuery(''));
       dispatch(setPriceRange([0, maxProductPrice]));
-      setCurrentPage(1);
+      dispatch(setPage(1));
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+       dispatch(setPage(newPage));
+       window.scrollTo({top: 0, behavior: 'smooth'});
+    }
   };
 
   return (
@@ -174,19 +183,22 @@ function Products() {
                 <div>
                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">Category</h3>
                    <div className="flex flex-wrap gap-2">
-                      {categories.map((category) => (
-                         <button
-                            key={category}
-                            onClick={() => handleCategoryChange(category)}
-                            className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${
-                               filters.category === category 
-                               ? 'bg-black text-white shadow-lg' 
-                               : 'bg-white border border-gray-100 text-gray-600 hover:border-black hover:text-black'
-                            }`}
-                         >
-                            {typeof category === 'string' ? category.replace('-', ' ') : category}
-                         </button>
-                      ))}
+                      {categories.map((category) => {
+                         const isSelected = filters.category === (typeof category === 'string' ? category : category.slug);
+                         return (
+                           <button
+                              key={typeof category === 'string' ? category : category.id}
+                              onClick={() => handleCategoryChange(category)}
+                              className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${
+                                 isSelected 
+                                 ? 'bg-black text-white shadow-lg' 
+                                 : 'bg-white border border-gray-100 text-gray-600 hover:border-black hover:text-black'
+                              }`}
+                           >
+                              {typeof category === 'string' ? category.replace('-', ' ') : category.name}
+                           </button>
+                         );
+                      })}
                    </div>
                 </div>
 
@@ -196,7 +208,7 @@ function Products() {
                    <input
                       type="range"
                       min="0"
-                      max={maxProductPrice} // Dynamic max
+                      max={maxProductPrice}
                       step="1"
                       value={filters.priceRange[1]}
                       onChange={(e) => dispatch(setPriceRange([0, parseInt(e.target.value)]))}
@@ -233,7 +245,7 @@ function Products() {
 
             {!isLoading && !error && (
               <>
-                {displayedProducts.length === 0 ? (
+                {products.length === 0 ? (
                   <div className="py-32 text-center">
                     <p className="text-xl font-black text-gray-200 uppercase tracking-[0.3em]">No Matches Found</p>
                     <button onClick={clearFilters} className="mt-4 text-[11px] font-bold uppercase tracking-widest border-b border-black">
@@ -242,7 +254,7 @@ function Products() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-16">
-                    {displayedProducts.map((product) => (
+                    {products.map((product) => (
                       <ProductCard key={product.id} product={product} />
                     ))}
                   </div>
@@ -250,27 +262,39 @@ function Products() {
 
                 {/* Pagination */}
                 {totalItems > itemsPerPage && (
-                  <div className="mt-24 flex flex-col sm:flex-row justify-center items-center gap-8 border-t border-gray-100 pt-12">
+                  <div className="mt-20 flex justify-center items-center gap-2 border-t border-gray-100 pt-12">
+                    
+                    {/* Previous Button */}
                     <button
-                      onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({top: 0, behavior: 'smooth'}); }}
+                      onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="group flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] disabled:opacity-10 disabled:cursor-not-allowed hover:opacity-60 transition-all"
+                      className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:border-black hover:text-black disabled:opacity-30 disabled:hover:border-gray-200 disabled:hover:text-gray-500 transition-all duration-300"
                     >
-                      <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                      Prev
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
-                    
-                    <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-300">
-                      Page <span className="text-black">{currentPage}</span> / {Math.ceil(totalItems / itemsPerPage)}
-                    </span>
-                    
+
+                    {/* Page Numbers */}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`w-10 h-10 flex items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
+                          currentPage === page
+                            ? 'bg-black text-white shadow-lg scale-110'
+                            : 'bg-white text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    {/* Next Button */}
                     <button
-                      onClick={() => { setCurrentPage(p => p + 1); window.scrollTo({top: 0, behavior: 'smooth'}); }}
-                      disabled={currentPage >= Math.ceil(totalItems / itemsPerPage)}
-                      className="group flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] disabled:opacity-10 disabled:cursor-not-allowed hover:opacity-60 transition-all"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage >= totalPages}
+                      className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:border-black hover:text-black disabled:opacity-30 disabled:hover:border-gray-200 disabled:hover:text-gray-500 transition-all duration-300"
                     >
-                      Next
-                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 )}

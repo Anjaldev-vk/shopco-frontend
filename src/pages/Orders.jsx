@@ -7,7 +7,8 @@ import ConfirmationModal from '../components/ConfirmationModal';
 
 function Orders() {
   const navigate = useNavigate();
-  const { data: orders, isLoading, error } = useGetOrdersQuery();
+  const { data, isLoading, error } = useGetOrdersQuery();
+  const orders = Array.isArray(data) ? data : data?.results || [];
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
