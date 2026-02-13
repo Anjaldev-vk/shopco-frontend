@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useGetProductByIdQuery, useUpdateProductMutation, useGetCategoriesQuery } from '../services/adminApi';
+import { useGetProductByIdQuery, useUpdateProductMutation, useGetCategoriesQuery, useUpdateProductInventoryMutation } from '../services/adminApi';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Upload, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -11,6 +11,7 @@ const ProductEdit = () => {
     // Correctly using skip to prevent query if id is missing
     const { data: product, isLoading: isFetching } = useGetProductByIdQuery(id);
     const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
+    const [updateInventory, { isLoading: isUpdatingInventory }] = useUpdateProductInventoryMutation();
     const { data: categories } = useGetCategoriesQuery();
 
     const [formData, setFormData] = useState({
@@ -32,9 +33,9 @@ const ProductEdit = () => {
                 description: product.description || '',
                 price: product.price || '',
                 brand: product.brand || '',
-                category: product.category || '', // Assuming category ID comes from backend
-                countInStock: product.countInStock || product.count || '', // Backend might send count or countInStock
-                image: null // Don't set image file, only preview
+                category: product.category?.id || product.category || '', 
+                countInStock: product.inventory_quantity !== undefined ? product.inventory_quantity : (product.countInStock || ''), 
+                image: null 
             });
             setImagePreview(product.image);
         }
@@ -62,17 +63,26 @@ const ProductEdit = () => {
         data.append('price', formData.price);
         data.append('brand', formData.brand);
         data.append('category', formData.category);
-        data.append('countInStock', formData.countInStock);
+        
         if (formData.image) {
             data.append('image', formData.image);
         }
 
         try {
             await updateProduct({ id, data }).unwrap();
+            
+            // Update inventory
+            if (formData.countInStock !== '') {
+                 await updateInventory({ 
+                    id, 
+                    quantity: parseInt(formData.countInStock) 
+                }).unwrap();
+            }
+
             toast.success('Product updated successfully');
             navigate('/admin/products');
         } catch (err) {
-            toast.error('Failed to update product');
+            toast.error(err?.data?.message || 'Failed to update product');
             console.error(err);
         }
     };
@@ -151,7 +161,7 @@ const ProductEdit = () => {
                                 required
                            >
                                <option value="">Select Category</option>
-                               {categories?.results?.map(cat => (
+                               {(Array.isArray(categories) ? categories : categories?.results || []).map(cat => (
                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                                ))}
                            </select>
@@ -189,10 +199,10 @@ const ProductEdit = () => {
 
                     <button
                         type="submit"
-                        disabled={isUpdating}
+                        disabled={isUpdating || isUpdatingInventory}
                         className="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 transition disabled:opacity-50 font-semibold"
                     >
-                        {isUpdating ? 'Updating...' : 'Update Product'}
+                        {isUpdating || isUpdatingInventory ? 'Updating...' : 'Update Product'}
                     </button>
                 </form>
             </div>

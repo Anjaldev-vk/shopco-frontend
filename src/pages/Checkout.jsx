@@ -90,31 +90,31 @@ function Checkout() {
         state: formData.state,
         postal_code: formData.pincode,
         country: 'India', // Default
-        // CreateUserAddress serializer might expect different fields? 
-        // Checking Shipping Models: address_line_1, address_line_2, ...
+
       };
       
-      // We'll trust the serializer handles the mapping or we match the model fields.
-      // Model: full_name, phone, address_line_1, address_line_2, city, state, postal_code, country
+
       
       await addAddress(addressData).unwrap();
             
-      // 2. Create Order (Backend uses Cart)
-      // Note: Backend CreateOrderView ignores body, but we call it to trigger creation from Cart.
-      const result = await createOrder({ 
-        payment_method: formData.paymentMethod 
-      }).unwrap();
+      // 2. Create Order
+      const orderPayload = {
+        payment_method: formData.paymentMethod,
+      };
+
+      if (buyNowItems) {
+        orderPayload.items = buyNowItems.map(item => ({
+            product_id: item.id,
+            quantity: item.quantity
+        }));
+      }
+
+      const result = await createOrder(orderPayload).unwrap();
       
       toast.success('Order placed successfully!');
       
-      // Cart clearing is handled by backend for standard orders.
-      // If this was Buy Now, we might need to handle it differently, 
-      // but since backend ONLY uses Cart, Buy Now flow is technically broken 
-      // unless we replaced Cart with Buy Now items beforehand. 
-      // For now, assuming standard flow.
-      
       if (!buyNowItems) {
-        dispatch(clearCart()); // Sync frontend state
+        dispatch(clearCart())
       }
       
       navigate('/order-success', { state: { orderId: result.id } });
@@ -338,8 +338,8 @@ function Checkout() {
               </div>
               
               {buyNowItems && (
-                 <div className="mt-4 p-3 bg-blue-50 text-blue-700 text-sm rounded-md">
-                   <strong>Buy Now Mode:</strong> Only the select items are being purchased. Your cart will not be cleared.
+                 <div className="mt-4 p-3 bg-blue-50text-sm rounded-md">
+                   {/* <strong>Buy Now Mode:</strong> Only the select items are being purchased. Your cart will not be cleared. */}
                  </div>
               )}
             </div>

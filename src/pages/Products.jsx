@@ -28,17 +28,14 @@ function Products() {
     return Array.isArray(data) ? data : data?.results || [];
   }, [data]);
 
-  // 2. DYNAMIC MAX PRICE CALCULATION
-  // This identifies that 12,000.00 is your current highest price
+
   const maxProductPrice = useMemo(() => {
     if (allProducts.length === 0) return 10000; // Default until data loads
     const prices = allProducts.map(p => parseFloat(p.price || 0));
     return Math.ceil(Math.max(...prices));
   }, [allProducts]);
 
-  // 3. AUTO-SYNC REDUX STATE
-  // This ensures your "Price Limit" filter starts at the actual maximum (e.g. 12,000)
-  // so that the expensive products aren't filtered out by default.
+
   useEffect(() => {
     if (allProducts.length > 0) {
       dispatch(setPriceRange([0, maxProductPrice]));

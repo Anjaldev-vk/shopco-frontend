@@ -34,34 +34,10 @@ function ForgotPassword() {
     const result = await dispatch(forgotPassword({ email }));
     
     if (!result.error) {
-      setEmailSent(true);
-      toast.success('Password reset link sent to your email');
+      toast.success('OTP sent to your email');
+      navigate('/verify-otp', { state: { email } });
     }
   };
-
-  if (emailSent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-         <div className="max-w-md w-full space-y-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-               <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-            </div>
-            <h2 className="text-3xl font-extrabold text-gray-900">Check your email</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              We have sent a password reset link to <strong>{email}</strong>.
-            </p>
-            <div className="mt-6">
-                <button
-                    onClick={() => navigate('/login')}
-                    className="text-indigo-600 hover:text-indigo-500 font-medium"
-                >
-                    Back to Login
-                </button>
-            </div>
-         </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

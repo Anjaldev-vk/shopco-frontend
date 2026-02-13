@@ -32,10 +32,10 @@ export const PRODUCT_CATEGORIES = {
 export const ITEMS_PER_PAGE = 12;
 
 // Price Range
-export const PRICE_RANGE = {
-  MIN: 0,
-  MAX: 10000,
-};
+// export const PRICE_RANGE = {
+//   MIN: 0,
+//   MAX: 10000,
+// };
 
 export default {
   API_BASE_URL,

@@ -8,7 +8,9 @@ import Checkout from "../pages/Checkout";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
+import VerifyOtp from "../pages/VerifyOtp";
 import ResetPassword from "../pages/ResetPassword";
+import ChangePassword from "../pages/ChangePassword";
 import Products from "../pages/Products";
 import Orders from "../pages/Orders";
 import OrderSuccess from "../pages/OrderSuccess";
@@ -27,6 +29,7 @@ import AdminProducts from "../admin/pages/Products";
 import ProductCreate from "../admin/pages/ProductCreate";
 import ProductEdit from "../admin/pages/ProductEdit";
 import AdminOrders from "../admin/pages/Orders";
+import AdminOrderDetail from "../admin/pages/OrderDetail";
 import Users from "../admin/pages/Users";
 
 // Fallback
@@ -45,6 +48,7 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* ---------- PROTECTED USER ROUTES ---------- */}
@@ -55,6 +59,7 @@ const AppRoutes = () => {
           <Route path="/orders" element={<Orders />} />
           <Route path="/order-success" element={<OrderSuccess />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/change-password" element={<ChangePassword />} />
         </Route>
       </Route>
 
@@ -66,6 +71,7 @@ const AppRoutes = () => {
           <Route path="products/create" element={<ProductCreate />} />
           <Route path="products/:id/edit" element={<ProductEdit />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="orders/:id" element={<AdminOrderDetail />} />
           <Route path="users" element={<Users />} />
         </Route>
       </Route>

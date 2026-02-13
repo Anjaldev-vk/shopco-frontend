@@ -75,6 +75,31 @@ const ProductDetails = () => {
     toast.success('Added to cart!');
   };
 
+  const handleBuyNow = () => {
+    if (!currentUser) {
+      toast.error('Please login to buy items');
+      navigate('/login');
+      return;
+    }
+    if (!product || isOutOfStock) return;
+
+    if (quantity > availableToAdd) {
+        toast.error(`Cannot add ${quantity} more. You already have ${currentCartQuantity} in cart.`);
+        return;
+    }
+
+    // Dispatch is NOT called here for Buy Now to avoid modifying the global cart
+    // dispatch(addToCart({ product, quantityToAdd: quantity }));
+    
+    // Pass item details to checkout via state
+    const buyNowItem = { 
+        ...product, 
+        quantity: quantity,
+        selectedSize: selectedSize 
+    };
+    navigate('/checkout', { state: { buyNowItems: [buyNowItem] } });
+  };
+
   const handleToggleWishlist = () => {
     if (!currentUser) {
       toast.error('Please login to manage wishlist');
@@ -212,9 +237,17 @@ const ProductDetails = () => {
                <button
                   onClick={handleAddToCart}
                   disabled={isOutOfStock || isMaxLimitReached || quantity === 0}
-                  className="bg-black text-white rounded-full h-12 px-8 text-sm font-bold uppercase tracking-wide hover:scale-105 transition-transform disabled:bg-gray-300 disabled:scale-100 disabled:cursor-not-allowed"
+                  className="bg-black text-white rounded-full h-12 px-6 text-sm font-bold uppercase tracking-wide hover:scale-105 transition-transform disabled:bg-gray-300 disabled:scale-100 disabled:cursor-not-allowed"
                >
                   {isOutOfStock ? 'Out of Stock' : isMaxLimitReached ? 'Limit Reached' : 'Add to Cart'}
+               </button>
+
+               <button
+                  onClick={handleBuyNow}
+                  disabled={isOutOfStock || isMaxLimitReached || quantity === 0}
+                  className="bg-white text-black border border-black rounded-full h-12 px-6 text-sm font-bold uppercase tracking-wide hover:bg-black hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+               >
+                  Buy Now
                </button>
 
                <button 

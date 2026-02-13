@@ -1,11 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGetOrdersQuery, useUpdateOrderStatusMutation } from '../services/adminApi';
 import { formatPrice } from '../../utils/formatPrice';
-import { Eye, ChevronDown } from 'lucide-react';
+import { Eye, ChevronDown, Search, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 const Orders = () => {
-    const { data: orders, isLoading, error } = useGetOrdersQuery(); 
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search), 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const queryParams = {};
+    if (debouncedSearch) queryParams.search = debouncedSearch;
+    if (statusFilter) queryParams.status = statusFilter;
+
+    const { data: orders, isLoading, error } = useGetOrdersQuery(queryParams); 
     const [updateOrderStatus] = useUpdateOrderStatusMutation();
 
     if (isLoading) return <div className="p-4">Loading orders...</div>;
@@ -30,6 +45,7 @@ const Orders = () => {
           SHIPPED: 'bg-purple-100 text-purple-800',
           DELIVERED: 'bg-green-100 text-green-800',
           CANCELLED: 'bg-red-100 text-red-800',
+          CANCELED: 'bg-red-100 text-red-800', // Handle both spellings if needed
         };
         return colors[status] || 'bg-gray-100 text-gray-800';
     };
@@ -38,7 +54,40 @@ const Orders = () => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Orders</h2>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <h2 className="text-2xl font-bold text-gray-800">Orders</h2>
+                
+                <div className="flex flex-1 w-full md:w-auto gap-4 items-center justify-end">
+                    {/* Search Bar */}
+                    <div className="relative w-full md:w-64">
+                        <input
+                            type="text"
+                            placeholder="Search Order ID or Email..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                    </div>
+
+                    {/* Status Filter */}
+                    <div className="relative w-full md:w-48">
+                         <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white"
+                        >
+                            <option value="">All Statuses</option>
+                            {statuses.map((status) => (
+                                <option key={status} value={status}>
+                                    {status}
+                                </option>
+                            ))}
+                        </select>
+                        <Filter className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                    </div>
+                </div>
+            </div>
             
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -60,6 +109,7 @@ const Orders = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {order.shipping_address?.full_name || 'N/A'}
+                                    <div className="text-xs text-gray-400">{order.user_email}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {new Date(order.created_at).toLocaleDateString()}
@@ -86,9 +136,12 @@ const Orders = () => {
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1">
+                                    <Link 
+                                        to={`/admin/orders/${order.id}`}
+                                        className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                                    >
                                         <Eye size={16} /> View
-                                    </button>
+                                    </Link>
                                 </td>
                             </tr>
                         ))}

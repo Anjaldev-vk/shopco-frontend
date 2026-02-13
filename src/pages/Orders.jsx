@@ -1,17 +1,27 @@
+import { useState } from 'react';
 import { useGetOrdersQuery, useCancelOrderMutation } from '../features/orders/orderApi';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice } from '../utils/formatPrice';
 import toast from 'react-hot-toast';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 function Orders() {
   const navigate = useNavigate();
   const { data: orders, isLoading, error } = useGetOrdersQuery();
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
 
-  const handleCancelOrder = async (orderId) => {
-    if (window.confirm('Are you sure you want to cancel this order?')) {
+  const initiateCancelOrder = (orderId) => {
+    setSelectedOrderId(orderId);
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (selectedOrderId) {
       try {
-        await cancelOrder(orderId).unwrap();
+        await cancelOrder(selectedOrderId).unwrap();
         toast.success('Order cancelled successfully');
       } catch (err) {
         toast.error(err?.data?.error || 'Failed to cancel order');
@@ -105,7 +115,7 @@ function Orders() {
                    </div>
                    {order.status === 'PENDING' && (
                      <button 
-                        onClick={() => handleCancelOrder(order.id)}
+                        onClick={() => initiateCancelOrder(order.id)}
                         disabled={isCancelling}
                         className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
                      >
@@ -141,15 +151,19 @@ function Orders() {
                   ))}
                 </div>
               </div>
-              
-              {/* <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                 <button className="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
-                    View Invoice
-                 </button>
-              </div> */}
             </div>
           ))}
         </div>
+
+        <ConfirmationModal 
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onConfirm={handleConfirmCancel}
+          title="Cancel Order"
+          message="Are you sure you want to cancel this order? This action cannot be undone."
+          confirmText={isCancelling ? "Cancelling..." : "Yes, Cancel Order"}
+          isDanger={true}
+        />
       </div>
     </div>
   );

@@ -11,17 +11,28 @@ export const adminApi = createApi({
   endpoints: (builder) => ({
     /* -------------------- PRODUCTS -------------------- */
     getCategories: builder.query({
-      query: () => ({
-        url: "/categories/",
+      query: (params) => ({
+        url: "/products/categories/",
         method: "GET",
+        params,
       }),
       providesTags: ["Categories"],
     }),
 
+    createCategory: builder.mutation({
+      query: (data) => ({
+        url: "/products/categories/create/",
+        method: "POST",
+        data,
+      }),
+      invalidatesTags: ["Categories"],
+    }),
+
     getProducts: builder.query({
-      query: () => ({
+      query: (params) => ({
         url: "/products/",
         method: "GET",
+        params,
       }),
       providesTags: ["Products"],
     }),
@@ -51,6 +62,15 @@ export const adminApi = createApi({
       invalidatesTags: ["Products"],
     }),
 
+    updateProductInventory: builder.mutation({
+      query: ({ id, quantity }) => ({
+        url: `/products/${id}/inventory/`,
+        method: "POST",
+        data: { quantity },
+      }),
+      invalidatesTags: ["Products"],
+    }),
+
     deleteProduct: builder.mutation({
       query: (id) => ({
         url: `/products/${id}/delete/`,
@@ -61,29 +81,41 @@ export const adminApi = createApi({
 
     /* -------------------- ORDERS -------------------- */
 
+    /* -------------------- ORDERS -------------------- */
+
     getOrders: builder.query({
-      query: () => ({
+      query: (params) => ({
         url: "/orders/",
         method: "GET",
+        params,
       }),
       providesTags: ["Orders"],
     }),
 
+    getOrderById: builder.query({
+      query: (id) => ({
+        url: `/orders/${id}/`,
+        method: "GET",
+      }),
+      providesTags: (result, error, id) => [{ type: "Order", id }],
+    }),
+
     updateOrderStatus: builder.mutation({
       query: ({ id, status }) => ({
-        url: `/orders/${id}/update/`,
-        method: "PATCH",
+        url: `/orders/${id}/status/`,
+        method: "POST",
         data: { status },
       }),
-      invalidatesTags: ["Orders"],
+      invalidatesTags: ["Orders", "Order"],
     }),
 
     /* -------------------- USERS -------------------- */
 
     getUsers: builder.query({
-      query: () => ({
+      query: (params) => ({
         url: "/users/",
         method: "GET",
+        params,
       }),
       providesTags: ["Users"],
     }),
@@ -122,19 +154,22 @@ export const adminApi = createApi({
             url: `/orders/${id}/cancel/`,
             method: "POST",
         }),
-        invalidatesTags: ["Orders", "Dashboard"],
+        invalidatesTags: ["Orders", "Dashboard", "Order"],
     }),
   }),
 });
 
 export const {
   useGetCategoriesQuery,
+  useCreateCategoryMutation,
   useGetProductsQuery,
   useGetProductByIdQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
+  useUpdateProductInventoryMutation,
   useDeleteProductMutation,
   useGetOrdersQuery,
+  useGetOrderByIdQuery,
   useUpdateOrderStatusMutation,
   useGetUsersQuery,
   useGetUserByIdQuery,

@@ -164,6 +164,25 @@ export const updateProfile = createAsyncThunk(
 );
 
 /* =========================
+   CHANGE PASSWORD
+========================= */
+export const changePassword = createAsyncThunk(
+  'auth/changePassword',
+  async ({ old_password, new_password }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/accounts/change-password/', {
+        old_password,
+        new_password,
+      });
+      return response.data;
+    } catch (error) {
+      if (error.response?.data) return rejectWithValue(error.response.data);
+      return rejectWithValue({ error: 'Password change failed.' });
+    }
+  }
+);
+
+/* =========================
    LOGOUT (IMPORTANT)
    Calls Django LogoutView
 ========================= */
