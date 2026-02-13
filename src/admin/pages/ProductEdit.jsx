@@ -18,10 +18,11 @@ const ProductEdit = () => {
         name: '',
         description: '',
         price: '',
-        brand: '',
+        discount_price: '',
         category: '',
         countInStock: '',
-        image: null
+        image: null,
+        is_active: true
     });
 
     const [imagePreview, setImagePreview] = useState(null);
@@ -32,18 +33,22 @@ const ProductEdit = () => {
                 name: product.name || '',
                 description: product.description || '',
                 price: product.price || '',
-                brand: product.brand || '',
+                discount_price: product.discount_price || '',
                 category: product.category?.id || product.category || '', 
                 countInStock: product.inventory_quantity !== undefined ? product.inventory_quantity : (product.countInStock || ''), 
-                image: null 
+                image: null,
+                is_active: product.is_active
             });
             setImagePreview(product.image);
         }
     }, [product]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
     };
 
     const handleImageChange = (e) => {
@@ -61,8 +66,13 @@ const ProductEdit = () => {
         data.append('name', formData.name);
         data.append('description', formData.description);
         data.append('price', formData.price);
-        data.append('brand', formData.brand);
+        if (formData.discount_price || formData.discount_price === 0) {
+            data.append('discount_price', formData.discount_price);
+        } else {
+            data.append('discount_price', '');
+        }
         data.append('category', formData.category);
+        data.append('is_active', formData.is_active);
         
         if (formData.image) {
             data.append('image', formData.image);
@@ -82,8 +92,15 @@ const ProductEdit = () => {
             toast.success('Product updated successfully');
             navigate('/admin/products');
         } catch (err) {
-            toast.error(err?.data?.message || 'Failed to update product');
-            console.error(err);
+            const errorMessage = err?.data?.message || err?.data?.error || 'Failed to update product';
+            toast.error(errorMessage);
+            console.error("Product update failed:", err);
+            
+             if (err?.data && typeof err.data === 'object' && !err.data.message && !err.data.error) {
+                 Object.entries(err.data).forEach(([key, value]) => {
+                     toast.error(`${key}: ${value}`);
+                 });
+            }
         }
     };
 
@@ -112,17 +129,7 @@ const ProductEdit = () => {
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
-                            <input
-                                type="text"
-                                name="brand"
-                                value={formData.brand}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                required
-                            />
-                        </div>
+
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
@@ -133,6 +140,19 @@ const ProductEdit = () => {
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                                 required
+                                min="0"
+                                step="0.01"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Discount Price</label>
+                            <input
+                                type="number"
+                                name="discount_price"
+                                value={formData.discount_price}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                                 min="0"
                                 step="0.01"
                             />
@@ -165,6 +185,19 @@ const ProductEdit = () => {
                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                                ))}
                            </select>
+                        </div>
+                        
+                        <div className="md:col-span-2">
+                             <label className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="is_active"
+                                    checked={formData.is_active}
+                                    onChange={handleChange}
+                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                />
+                                <span className="text-sm font-medium text-gray-700">Is Active</span>
+                            </label>
                         </div>
                     </div>
 

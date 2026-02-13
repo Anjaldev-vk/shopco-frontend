@@ -18,6 +18,7 @@ import { orderApi } from "../features/orders/orderApi";
 import { authApi } from "../features/auth/authApi";
 import { adminApi } from "../admin/services/adminApi";
 import { shippingApi } from "../features/shipping/shippingApi";
+import { paymentApi } from "../features/payments/paymentApi";
 
 const rootReducer = combineReducers({
   // User state
@@ -35,6 +36,7 @@ const rootReducer = combineReducers({
   [authApi.reducerPath]: authApi.reducer,
   [adminApi.reducerPath]: adminApi.reducer,
   [shippingApi.reducerPath]: shippingApi.reducer,
+  [paymentApi.reducerPath]: paymentApi.reducer,
 });
 
 const persistConfig = {
@@ -57,7 +59,8 @@ export const store = configureStore({
       orderApi.middleware,
       authApi.middleware,
       adminApi.middleware,
-      shippingApi.middleware
+      shippingApi.middleware,
+      paymentApi.middleware,
     ),
 });
 

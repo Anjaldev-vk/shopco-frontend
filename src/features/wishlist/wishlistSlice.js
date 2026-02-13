@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/axiosBaseQuery';
 import toast from 'react-hot-toast';
+import { logoutUser } from '../auth/authSlice';
 
 // Async thunks
 export const fetchWishlist = createAsyncThunk(
@@ -121,6 +122,17 @@ const wishlistSlice = createSlice({
       .addCase(fetchWishlist.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      });
+      builder
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.items = [];
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(logoutUser.rejected, (state) => {
+     // Auth slice forces logout on rejection too, so we should clear wishlist
+      state.items = [];
+      state.error = null;
       });
   },
 });

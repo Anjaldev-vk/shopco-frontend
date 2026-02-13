@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetOrderByIdQuery, useUpdateOrderStatusMutation, useAdminCancelOrderMutation } from '../services/adminApi';
 import { formatPrice } from '../../utils/formatPrice';
@@ -18,6 +18,8 @@ const OrderDetail = () => {
     if (isLoading) return <div className="p-8 text-center text-gray-500">Loading order details...</div>;
     if (error) return <div className="p-8 text-center text-red-500">Error loading order. It might not exist.</div>;
     if (!order) return null;
+    
+    console.log(order)
 
     const handleStatusChange = async (newStatus) => {
         try {
@@ -52,6 +54,7 @@ const OrderDetail = () => {
         return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
     };
 
+    
     return (
         <div className="max-w-6xl mx-auto pb-10">
             {/* Header */}
@@ -157,7 +160,7 @@ const OrderDetail = () => {
                         <div className="space-y-3 text-sm">
                             <div>
                                 <p className="text-gray-500">Name</p>
-                                <p className="font-medium text-gray-900">{order.shipping_address?.full_name || 'N/A'}</p>
+                                <p className="font-medium text-gray-900">{order.shipping_address?.full_name || order.user_name || 'N/A'}</p>
                             </div>
                             <div>
                                 <p className="text-gray-500">Email</p>
@@ -165,7 +168,7 @@ const OrderDetail = () => {
                             </div>
                             <div>
                                 <p className="text-gray-500">Phone</p>
-                                <p className="font-medium text-gray-900">{order.shipping_address?.phone_number || 'N/A'}</p>
+                                <p className="font-medium text-gray-900">{order.shipping_address?.phone || 'N/A'}</p>
                             </div>
                         </div>
                     </div>
@@ -177,12 +180,13 @@ const OrderDetail = () => {
                         </h3>
                         {order.shipping_address ? (
                             <div className="text-sm text-gray-600 leading-relaxed">
-                                <p>{order.shipping_address.address_line1}</p>
-                                {order.shipping_address.address_line2 && <p>{order.shipping_address.address_line2}</p>}
+                                <p>{order.shipping_address.address_line_1}</p>
+                                {order.shipping_address.address_line_2 && <p>{order.shipping_address.address_line_2}</p>}
                                 <p>
                                     {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.postal_code}
                                 </p>
                                 <p>{order.shipping_address.country}</p>
+                                <p className="mt-2 text-gray-500 font-medium">Phone: {order.shipping_address.phone}</p>
                             </div>
                         ) : (
                             <p className="text-sm text-gray-500 italic">No shipping address provided</p>
@@ -197,7 +201,7 @@ const OrderDetail = () => {
                         <div className="space-y-3 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-gray-500">Payment Method</span>
-                                <span className="font-medium text-gray-900">{order.payment_method || 'COD'}</span>
+                                <span className="font-medium text-gray-900">{order.payment?.payment_method? 'UPI' : 'COD'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-500">Payment Status</span>

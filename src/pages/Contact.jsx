@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Mail, Send } from 'lucide-react';
@@ -11,15 +10,52 @@ const Contact = () => {
     message: ''
   });
 
+  const [loading, setLoading] = useState(false);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  // ⭐⭐⭐ W3FORMS IMPLEMENTATION ⭐⭐⭐
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulate form submission
-    toast.success('Message sent! We will get back to you soon.');
-    setFormData({ name: '', email: '', message: '' });
+    setLoading(true);
+
+    const formPayload = new FormData();
+
+    // YOUR ACCESS KEY
+    formPayload.append("access_key", "7b28016d-dea5-4872-95cf-2018309ee84f");
+
+    // form fields
+    formPayload.append("name", formData.name);
+    formPayload.append("email", formData.email);
+    formPayload.append("message", formData.message);
+
+    // optional but recommended
+    formPayload.append("subject", "New Contact Message from Shop.co");
+    formPayload.append("from_name", "Shop.co Contact Form");
+
+    try {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: formPayload,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Message sent! We will get back to you soon.");
+        setFormData({ name: '', email: '', message: '' });
+      } else {
+        console.log(data);
+        toast.error("Failed to send message. Please try again.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Network error. Please check your internet.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const contactInfo = [
@@ -101,7 +137,9 @@ const Contact = () => {
                 className="absolute inset-0 w-full h-full object-cover grayscale opacity-60 hover:opacity-100 transition-opacity duration-500"
               />
               <div className="absolute inset-0 flex items-center justify-center">
-                 <span className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold shadow-sm">View on Google Maps</span>
+                 <span className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
+                   View on Google Maps
+                 </span>
               </div>
             </div>
           </motion.div>
@@ -114,6 +152,7 @@ const Contact = () => {
             className="bg-white rounded-3xl p-8 shadow-xl"
           >
             <form onSubmit={handleSubmit} className="space-y-6">
+
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input
@@ -158,11 +197,13 @@ const Contact = () => {
 
               <button
                 type="submit"
-                className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 group"
+                disabled={loading}
+                className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 group disabled:opacity-60"
               >
-                Send Message
+                {loading ? "Sending..." : "Send Message"}
                 <Send className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
+
             </form>
           </motion.div>
 

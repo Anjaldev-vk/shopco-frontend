@@ -120,7 +120,6 @@ const Products = () => {
                                         </div>
                                         <div className="ml-4">
                                             <div className="text-sm font-medium text-gray-900 truncate max-w-[12rem]" title={product.name}>{product.name}</div>
-                                            <div className="text-sm text-gray-500 truncate max-w-[12rem]">{product.brand}</div>
                                         </div>
                                     </div>
                                 </td>

@@ -5,6 +5,7 @@ import { selectCartItems, selectCartTotal } from '../features/cart/selectors';
 import { clearCart } from '../features/cart/cartSlice';
 import { useCreateOrderMutation } from '../features/orders/orderApi';
 import { useAddAddressMutation } from '../features/shipping/shippingApi';
+import { useCreateRazorpayOrderMutation, useVerifyRazorpayPaymentMutation } from '../features/payments/paymentApi';
 import { formatPrice } from '../utils/formatPrice';
 import { isValidPhone, isRequired } from '../utils/validators';
 import toast from 'react-hot-toast';
@@ -30,8 +31,10 @@ function Checkout() {
 
   const [addAddress, { isLoading: isAddressLoading }] = useAddAddressMutation();
   const [createOrder, { isLoading: isOrderLoading }] = useCreateOrderMutation();
+  const [createRazorpayOrder, { isLoading: isRazorpayLoading }] = useCreateRazorpayOrderMutation();
+  const [verifyRazorpayPayment, { isLoading: isVerifyLoading }] = useVerifyRazorpayPaymentMutation();
 
-  const isLoading = isAddressLoading || isOrderLoading;
+  const isLoading = isAddressLoading || isOrderLoading || isRazorpayLoading || isVerifyLoading;
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -69,6 +72,56 @@ function Checkout() {
     return true;
   };
 
+  const handleRazorpayPayment = async (orderId, amount) => {
+    try {
+      const data = await createRazorpayOrder({ order_id: orderId }).unwrap();
+
+      const options = {
+        key: data.razorpay_key_id,
+        amount: data.amount,
+        currency: data.currency,
+        name: "Shop.co",
+        description: "Order Payment",
+        order_id: data.razorpay_order_id,
+        handler: async (response) => {
+          try {
+            await verifyRazorpayPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }).unwrap();
+            
+            toast.success("Payment Successful!");
+            if (!buyNowItems) {
+               dispatch(clearCart());
+            }
+            navigate('/order-success', { state: { orderId: orderId } });
+          } catch (error) {
+            console.error(error);
+            toast.error("Payment Verification Failed");
+          }
+        },
+        prefill: {
+          name: formData.fullName,
+          email: formData.email,
+          contact: formData.phone,
+        },
+        theme: {
+          color: "#3399cc",
+        },
+      };
+
+      const rzp1 = new window.Razorpay(options);
+      rzp1.on('payment.failed', function (response){
+          toast.error(response.error.description);
+      });
+      rzp1.open();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to initiate Razorpay payment");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -89,17 +142,14 @@ function Checkout() {
         city: formData.city,
         state: formData.state,
         postal_code: formData.pincode,
-        country: 'India', // Default
-
+        country: 'India', 
       };
-      
-
       
       await addAddress(addressData).unwrap();
             
-      // 2. Create Order
+      // 2. Create Order (always create pending order first)
       const orderPayload = {
-        payment_method: formData.paymentMethod,
+        payment_method: formData.paymentMethod === 'ONLINE' ? 'RAZORPAY' : 'COD',
       };
 
       if (buyNowItems) {
@@ -111,13 +161,18 @@ function Checkout() {
 
       const result = await createOrder(orderPayload).unwrap();
       
-      toast.success('Order placed successfully!');
-      
-      if (!buyNowItems) {
-        dispatch(clearCart())
+      if (formData.paymentMethod === 'ONLINE') {
+        // 3. Handle Razorpay
+        await handleRazorpayPayment(result.id, totalAmount);
+      } else {
+        // 3. Handle COD
+        toast.success('Order placed successfully!');
+        if (!buyNowItems) {
+            dispatch(clearCart());
+        }
+        navigate('/order-success', { state: { orderId: result.id } });
       }
-      
-      navigate('/order-success', { state: { orderId: result.id } });
+
     } catch (error) {
       console.error(error);
       toast.error(error?.data?.error || 'Failed to place order');
@@ -272,15 +327,16 @@ function Checkout() {
                     />
                     <span className="font-medium">Cash on Delivery</span>
                   </label>
-                  <label className="flex items-center gap-3 p-4 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 opacity-50">
+                  <label className="flex items-center gap-3 p-4 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
                     <input
                       type="radio"
                       name="paymentMethod"
                       value="ONLINE"
-                      disabled
+                      checked={formData.paymentMethod === 'ONLINE'}
+                      onChange={handleChange}
                       className="w-4 h-4"
                     />
-                    <span className="font-medium">Online Payment (Coming Soon)</span>
+                    <span className="font-medium">Online Payment (Razorpay)</span>
                   </label>
                 </div>
               </div>

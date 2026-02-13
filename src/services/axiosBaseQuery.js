@@ -113,6 +113,7 @@ export const axiosBaseQuery = ({ baseUrl } = { baseUrl: "" }) => {
         method,
         data,
         params,
+        headers: data instanceof FormData ? { "Content-Type": undefined } : undefined,
       });
       return { data: result.data };
     } catch (axiosError) {
