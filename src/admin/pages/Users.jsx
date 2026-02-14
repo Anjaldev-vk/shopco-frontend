@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGetUsersQuery, useToggleUserBlockMutation } from '../services/adminApi';
+import Pagination from '../../components/Pagination';
 import { User, Shield, Ban, CheckCircle, Search, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -8,6 +9,8 @@ const Users = () => {
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10;
 
     // Debounce search
     useEffect(() => {
@@ -15,9 +18,16 @@ const Users = () => {
         return () => clearTimeout(timer);
     }, [search]);
 
+    // Reset page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearch, statusFilter]);
+
     const queryParams = {};
     if (debouncedSearch) queryParams.search = debouncedSearch;
     if (statusFilter) queryParams.status = statusFilter;
+    queryParams.page = currentPage;
+    queryParams.page_size = pageSize;
 
     const { data: users, isLoading, error } = useGetUsersQuery(queryParams);
     const [toggleUserBlock] = useToggleUserBlockMutation();
@@ -47,6 +57,8 @@ const Users = () => {
     if (error) return <div className="p-4 text-red-500">Error loading users</div>;
 
     const userList = Array.isArray(users) ? users : users?.results || [];
+    const totalCount = users?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
 
     return (
         <div>
@@ -142,6 +154,17 @@ const Users = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination */}
+            {!isLoading && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    hasNext={!!users?.next}
+                    hasPrevious={!!users?.previous}
+                />
+            )}
 
             <ConfirmationModal 
                 isOpen={isModalOpen}

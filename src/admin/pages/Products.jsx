@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGetProductsQuery, useGetCategoriesQuery, useDeleteProductMutation } from '../services/adminApi';
+import Pagination from '../../components/Pagination';
 import { formatPrice } from '../../utils/formatPrice';
 import { Link } from 'react-router-dom';
 import { Edit, Trash2, Plus, Search, Filter } from 'lucide-react';
@@ -10,6 +11,8 @@ const Products = () => {
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [category, setCategory] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10;
 
     const [deleteProduct] = useDeleteProductMutation();
 
@@ -22,15 +25,24 @@ const Products = () => {
         return () => clearTimeout(timer);
     }, [search]);
 
+    // Reset page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearch, category]);
+
     // Construct query params
     const queryParams = {};
     if (debouncedSearch) queryParams.search = debouncedSearch;
     if (category) queryParams.category = category;
+    queryParams.page = currentPage;
+    queryParams.page_size = pageSize;
 
     const { data, isLoading, error } = useGetProductsQuery(queryParams);
     const { data: categoriesData } = useGetCategoriesQuery();
     
     const products = Array.isArray(data) ? data : data?.results || [];
+    const totalCount = data?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
     const categories = Array.isArray(categoriesData) ? categoriesData : categoriesData?.results || [];
 
     const initiateDelete = (id) => {
@@ -167,6 +179,17 @@ const Products = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination */}
+            {!isLoading && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    hasNext={!!data?.next}
+                    hasPrevious={!!data?.previous}
+                />
+            )}
             
             <ConfirmationModal 
                 isOpen={isModalOpen}
