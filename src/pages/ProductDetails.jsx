@@ -72,7 +72,6 @@ const ProductDetails = () => {
     }
 
     dispatch(addToCart({ product, quantityToAdd: quantity }));
-    toast.success('Added to cart!');
   };
 
   const handleBuyNow = () => {

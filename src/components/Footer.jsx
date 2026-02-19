@@ -106,11 +106,11 @@ const Footer = () => {
                  <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="Paypal" className="h-3 object-contain" />
                </div>
                <div className="bg-white px-2 py-1 rounded border border-gray-200 shadow-sm w-12 h-8 flex items-center justify-center">
-                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Apple_Pay_logo.svg/2560px-Apple_Pay_logo.svg.png" alt="Apple Pay" className="h-4 object-contain" />
+                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Apple_Pay_logo.svg/200px-Apple_Pay_logo.svg.png" alt="Apple Pay" className="h-4 object-contain" />
                </div>
-               <div className="bg-white px-2 py-1 rounded border border-gray-200 shadow-sm w-12 h-8 flex items-center justify-center">
-                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Google_Pay_Logo.svg/2560px-Google_Pay_Logo.svg.png" alt="Google Pay" className="h-4 object-contain" />
-               </div>
+               {/* <div className="bg-white px-2 py-1 rounded border border-gray-200 shadow-sm w-12 h-8 flex items-center justify-center">
+                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Google_Pay_Logo.svg/100px-Google_Pay_Logo.svg.png" alt="Google Pay" className="h-4 object-contain" />
+               </div> */}
            </div>
         </div>
       </div>

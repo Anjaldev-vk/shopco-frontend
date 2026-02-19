@@ -15,7 +15,6 @@ function ResetPassword() {
   const stateEmail = location.state?.email;
   const stateOtp = location.state?.otp;
 
-  // Extract query params (if link is like /reset-password?email=...&otp=...)
   const initialEmail = stateEmail || searchParams.get('email') || '';
   const initialOtp = stateOtp || searchParams.get('otp') || '';
 

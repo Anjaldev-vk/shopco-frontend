@@ -89,7 +89,18 @@ const OrderDetail = () => {
                                     <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200">
                                         {/* Assuming item.product.images exists or handling fallback */}
                                         <img 
-                                            src={item.product?.image || item.image || "https://via.placeholder.com/80"} 
+                                            src={
+                                                (() => {
+                                                    // Prioritize product_image from the flattened API response
+                                                    const imageUrl = item.product_image || item.product?.image;
+                                                    if (imageUrl) {
+                                                        return imageUrl.startsWith('http') 
+                                                            ? imageUrl 
+                                                            : `http://localhost:8000${imageUrl}`;
+                                                    }
+                                                    return "https://via.placeholder.com/80";
+                                                })()
+                                            } 
                                             alt={item.product_name} 
                                             className="w-full h-full object-cover"
                                         />
