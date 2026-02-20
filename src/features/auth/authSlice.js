@@ -84,7 +84,67 @@ export const signup = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue({ error: 'Registration failed.' });
+      return rejectWithValue(error.response?.data || { error: 'Registration failed.' });
+    }
+  }
+);
+
+/* =========================
+   VERIFY OTP
+========================= */
+export const verifyOtp = createAsyncThunk(
+  'auth/verifyOtp',
+  async ({ email, otp }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/accounts/verify-otp/', { email, otp });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { error: 'OTP verification failed.' });
+    }
+  }
+);
+
+/* =========================
+   RESEND OTP
+========================= */
+export const resendOtp = createAsyncThunk(
+  'auth/resendOtp',
+  async ({ email }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/accounts/resend-otp/', { email });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { error: 'Failed to resend OTP.' });
+    }
+  }
+);
+
+/* =========================
+   FORGOT PASSWORD
+========================= */
+export const forgotPassword = createAsyncThunk(
+  'auth/forgotPassword',
+  async ({ email }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/accounts/password-reset-request/', { email });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { error: 'Failed to request reset.' });
+    }
+  }
+);
+
+/* =========================
+   RESET PASSWORD
+========================= */
+export const resetPassword = createAsyncThunk(
+  'auth/resetPassword',
+  async ({ email, otp, new_password }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/accounts/password-reset-confirm/', { email, otp, new_password });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { error: 'Failed to reset password.' });
     }
   }
 );
@@ -165,7 +225,39 @@ const authSlice = createSlice({
         state.currentUser = null;
         state.isAdmin = false;
         state.loading = false;
-      });
+      })
+
+      // Signup/OTP/Reset Loading States
+      .addMatcher(
+        (action) => [
+          'auth/signup/pending', 
+          'auth/verifyOtp/pending', 
+          'auth/resendOtp/pending', 
+          'auth/forgotPassword/pending', 
+          'auth/resetPassword/pending'
+        ].includes(action.type),
+        (state) => { state.loading = true; state.error = null; }
+      )
+      .addMatcher(
+        (action) => [
+          'auth/signup/fulfilled', 
+          'auth/verifyOtp/fulfilled', 
+          'auth/resendOtp/fulfilled', 
+          'auth/forgotPassword/fulfilled', 
+          'auth/resetPassword/fulfilled'
+        ].includes(action.type),
+        (state) => { state.loading = false; }
+      )
+      .addMatcher(
+        (action) => [
+          'auth/signup/rejected', 
+          'auth/verifyOtp/rejected', 
+          'auth/resendOtp/rejected', 
+          'auth/forgotPassword/rejected', 
+          'auth/resetPassword/rejected'
+        ].includes(action.type),
+        (state, action) => { state.loading = false; state.error = action.payload; }
+      );
   },
 });
 

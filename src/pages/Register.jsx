@@ -5,7 +5,7 @@ import { signup, verifyOtp, resendOtp, clearError } from '../features/auth/authS
 import { selectCurrentUser, selectAuthLoading, selectAuthError } from '../features/auth/selectors';
 import { isValidEmail, validatePassword } from '../utils/validators';
 import toast from 'react-hot-toast';
-import { ArrowRight, Loader2, Mail } from 'lucide-react';
+import { ArrowRight, Mail } from 'lucide-react';
 
 function Register() {
   const navigate = useNavigate();

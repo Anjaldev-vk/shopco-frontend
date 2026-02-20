@@ -6,7 +6,7 @@ export const adminApi = createApi({
   baseQuery: axiosBaseQuery({
     baseUrl: "/api/admin",
   }),
-  tagTypes: ["Products", "Orders", "Users"],
+  tagTypes: ["Products", "Orders", "Users", "Categories", "Order", "Dashboard"],
 
   endpoints: (builder) => ({
     /* -------------------- PRODUCTS -------------------- */
