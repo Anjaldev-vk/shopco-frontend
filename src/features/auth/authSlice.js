@@ -11,50 +11,60 @@ const isTokenValid = (token) => {
     const decoded = jwtDecode(token);
     const currentTime = Date.now() / 1000;
     return decoded.exp > currentTime;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
 
 /* =========================
    Restore Session (page refresh login)
+   Uses refresh cookie automatically
 ========================= */
 export const restoreSession = createAsyncThunk(
   'auth/restoreSession',
   async (_, { rejectWithValue }) => {
-    const accessToken = sessionStorage.getItem('accessToken');
+    try {
+      const accessToken = sessionStorage.getItem('accessToken');
 
-    if (accessToken && isTokenValid(accessToken)) {
-      try {
-        const response = await api.get('/api/accounts/profile/');
-        return response.data;
-      } catch (error) {
-        sessionStorage.removeItem('accessToken');
-        sessionStorage.removeItem('refreshToken');
-        return rejectWithValue(error.response?.data || 'Session restore failed');
+      // If access still valid → just get profile
+      if (accessToken && isTokenValid(accessToken)) {
+        const res = await api.get('/api/accounts/profile/');
+        return res.data;
       }
+
+      // Otherwise axios interceptor will refresh using cookie
+      const res = await api.get('/api/accounts/profile/');
+      return res.data;
+
+    } catch (error) {
+      sessionStorage.removeItem('accessToken');
+      return rejectWithValue('Session expired');
     }
-    return rejectWithValue('No valid token');
   }
 );
 
 /* =========================
-   LOGIN
+   LOGIN (cookie refresh architecture)
 ========================= */
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
       const response = await api.post('/api/accounts/login/', { email, password });
-      const { access, refresh, user } = response.data;
 
+      // backend returns ONLY access token
+      const access = response.data.access;
+      const user = response.data.user;
+
+      // store only access token
       sessionStorage.setItem('accessToken', access);
-      sessionStorage.setItem('refreshToken', refresh);
 
       return user;
+
     } catch (error) {
-      if (error.response?.data) return rejectWithValue(error.response.data);
-      return rejectWithValue({ error: 'Login failed. Please check your credentials.' });
+      return rejectWithValue(
+        error.response?.data || { error: 'Login failed. Please check your credentials.' }
+      );
     }
   }
 );
@@ -74,134 +84,23 @@ export const signup = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      if (error.response?.data) {
-        const errorMsg = error.response.data.error || Object.values(error.response.data)[0];
-        return rejectWithValue({ error: errorMsg });
-      }
       return rejectWithValue({ error: 'Registration failed.' });
     }
   }
 );
 
 /* =========================
-   OTP VERIFY
-========================= */
-export const verifyOtp = createAsyncThunk(
-  'auth/verifyOtp',
-  async ({ email, otp }, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/api/accounts/verify-otp/', { email, otp });
-      return response.data;
-    } catch (error) {
-      return rejectWithValue({ error: error.response?.data?.error || 'Verification failed.' });
-    }
-  }
-);
-
-/* =========================
-   RESEND OTP
-========================= */
-export const resendOtp = createAsyncThunk(
-  'auth/resendOtp',
-  async ({ email }, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/api/accounts/resend-otp/', { email });
-      return response.data;
-    } catch (error) {
-      return rejectWithValue({ error: error.response?.data?.error || 'Failed to resend OTP.' });
-    }
-  }
-);
-
-/* =========================
-   FORGOT PASSWORD
-========================= */
-export const forgotPassword = createAsyncThunk(
-  'auth/forgotPassword',
-  async ({ email }, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/api/accounts/password-reset-request/', { email });
-      return response.data;
-    } catch (error) {
-      return rejectWithValue({ error: error.response?.data?.error || 'Failed to request password reset.' });
-    }
-  }
-);
-
-/* =========================
-   RESET PASSWORD
-========================= */
-export const resetPassword = createAsyncThunk(
-  'auth/resetPassword',
-  async ({ email, otp, new_password }, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/api/accounts/password-reset-confirm/', {
-        email,
-        otp,
-        new_password,
-      });
-      return response.data;
-    } catch (error) {
-      return rejectWithValue({ error: error.response?.data?.error || 'Password reset failed.' });
-    }
-  }
-);
-
-/* =========================
-   UPDATE PROFILE
-========================= */
-export const updateProfile = createAsyncThunk(
-  'auth/updateProfile',
-  async (userData, { rejectWithValue }) => {
-    try {
-      const response = await api.put('/api/accounts/profile/', userData);
-      return response.data;
-    } catch (error) {
-      if (error.response?.data) return rejectWithValue(error.response.data);
-      return rejectWithValue({ error: 'Profile update failed.' });
-    }
-  }
-);
-
-/* =========================
-   CHANGE PASSWORD
-========================= */
-export const changePassword = createAsyncThunk(
-  'auth/changePassword',
-  async ({ old_password, new_password }, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/api/accounts/change-password/', {
-        old_password,
-        new_password,
-      });
-      return response.data;
-    } catch (error) {
-      if (error.response?.data) return rejectWithValue(error.response.data);
-      return rejectWithValue({ error: 'Password change failed.' });
-    }
-  }
-);
-
-/* =========================
-   LOGOUT (IMPORTANT)
-   Calls Django LogoutView
+   LOGOUT (clears refresh cookie server-side)
 ========================= */
 export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
   async (_, { rejectWithValue }) => {
     try {
-      // backend logout → blacklists refresh cookie
-      await api.post('/api/accounts/logout/');
-
-      // clear local tokens
+      await api.post('/api/accounts/logout/');  // deletes cookie
       sessionStorage.removeItem('accessToken');
-      sessionStorage.removeItem('refreshToken');
-
       return true;
-    } catch (error) {
-      // even if API fails, force local logout
+    } catch {
       sessionStorage.removeItem('accessToken');
-      sessionStorage.removeItem('refreshToken');
       return rejectWithValue('Logout failed');
     }
   }
@@ -262,19 +161,10 @@ const authSlice = createSlice({
       })
 
       // Logout
-      .addCase(logoutUser.pending, (state) => {
-        state.loading = true;
-      })
       .addCase(logoutUser.fulfilled, (state) => {
-        state.loading = false;
         state.currentUser = null;
         state.isAdmin = false;
-        state.error = null;
-      })
-      .addCase(logoutUser.rejected, (state) => {
         state.loading = false;
-        state.currentUser = null;
-        state.isAdmin = false;
       });
   },
 });
