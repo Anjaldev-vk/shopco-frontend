@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import api from "../../services/axiosBaseQuery";
+import api from "../../services/delete_me";
 
 const BrandSection = () => {
   const [brands, setBrands] = useState([]);

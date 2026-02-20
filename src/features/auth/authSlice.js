@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../services/axiosBaseQuery';
+import api from '../../services/delete_me';
 import { jwtDecode } from 'jwt-decode';
 
 /* =========================
