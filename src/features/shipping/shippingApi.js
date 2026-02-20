@@ -1,5 +1,5 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { axiosBaseQuery } from '../../services/delete_me';
+import { axiosBaseQuery } from '../../services/axiosBaseQuery';
 
 export const shippingApi = createApi({
   reducerPath: 'shippingApi',

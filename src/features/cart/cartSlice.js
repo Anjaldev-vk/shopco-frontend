@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../services/delete_me';
+import api from '../../services/axiosBaseQuery';
 import toast from 'react-hot-toast';
 
 // Async thunks
