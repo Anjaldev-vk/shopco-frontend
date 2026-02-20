@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/reduxHooks';
 import { login, clearError } from '../features/auth/authSlice';
 import { selectCurrentUser, selectAuthLoading, selectAuthError, selectIsAdmin } from '../features/auth/selectors';
-import { initializeCSRF } from '../services/axiosBaseQuery';
+import { initializeCSRF } from '../services/temp';
 import toast from 'react-hot-toast';
 import { ArrowRight } from 'lucide-react';
 

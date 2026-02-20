@@ -1,5 +1,5 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { axiosBaseQuery } from '../../services/axiosBaseQuery';
+import { axiosBaseQuery } from '../../services/temp';
 
 export const productApi = createApi({
   reducerPath: 'productApi',

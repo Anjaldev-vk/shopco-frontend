@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../services/axiosBaseQuery';
+import api from '../../services/temp';
 import toast from 'react-hot-toast';
 import { logoutUser } from '../auth/authSlice';
 
