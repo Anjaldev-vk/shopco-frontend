@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/reduxHooks';
 import { login, clearError } from '../features/auth/authSlice';
 import { selectCurrentUser, selectAuthLoading, selectAuthError, selectIsAdmin } from '../features/auth/selectors';
-import { initializeCSRF } from '../services/axiosBaseQuery';
 import toast from 'react-hot-toast';
 import { ArrowRight } from 'lucide-react';
 
@@ -45,29 +44,10 @@ function Login() {
     });
   };
 
-  /* ---------- 🔥 FIXED LOGIN FLOW ---------- */
+  /* ---------- LOGIN FLOW ---------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    try {
-      /**
-       * STEP 1:
-       * Ask Django for a CSRF cookie.
-       * Browser stores csrftoken (cross-site allowed because SameSite=None)
-       */
-      await initializeCSRF();
-
-      /**
-       * STEP 2:
-       * Now Django accepts the login POST
-       * Axios interceptor automatically attaches X-CSRFToken
-       */
-      await dispatch(login(formData));
-
-    } catch (err) {
-      console.error("Login failed:", err);
-      toast.error("Unable to login. Please try again.");
-    }
+    dispatch(login(formData));
   };
 
   return (

@@ -4,7 +4,7 @@ import { axiosBaseQuery } from "../../services/axiosBaseQuery";
 export const adminApi = createApi({
   reducerPath: "adminApi",
   baseQuery: axiosBaseQuery({
-    baseUrl: "http://localhost:8000/api/admin",
+    baseUrl: "/api/admin",
   }),
   tagTypes: ["Products", "Orders", "Users"],
 
