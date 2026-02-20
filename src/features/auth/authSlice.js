@@ -165,6 +165,21 @@ export const changePassword = createAsyncThunk(
 );
 
 /* =========================
+   UPDATE PROFILE
+========================= */
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (profileData, { rejectWithValue }) => {
+    try {
+      const response = await api.put('/api/accounts/profile/update/', profileData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { error: 'Failed to update profile.' });
+    }
+  }
+);
+
+/* =========================
    LOGOUT (clears refresh cookie server-side)
 ========================= */
 export const logoutUser = createAsyncThunk(
@@ -250,7 +265,8 @@ const authSlice = createSlice({
           'auth/resendOtp/pending', 
           'auth/forgotPassword/pending', 
           'auth/resetPassword/pending',
-          'auth/changePassword/pending'
+          'auth/changePassword/pending',
+          'auth/updateProfile/pending'
         ].includes(action.type),
         (state) => { state.loading = true; state.error = null; }
       )
@@ -261,9 +277,15 @@ const authSlice = createSlice({
           'auth/resendOtp/fulfilled', 
           'auth/forgotPassword/fulfilled', 
           'auth/resetPassword/fulfilled',
-          'auth/changePassword/fulfilled'
+          'auth/changePassword/fulfilled',
+          'auth/updateProfile/fulfilled'
         ].includes(action.type),
-        (state) => { state.loading = false; }
+        (state, action) => { 
+          state.loading = false;
+          if (action.type === 'auth/updateProfile/fulfilled') {
+            state.currentUser = action.payload;
+          }
+        }
       )
       .addMatcher(
         (action) => [
@@ -272,7 +294,8 @@ const authSlice = createSlice({
           'auth/resendOtp/rejected', 
           'auth/forgotPassword/rejected', 
           'auth/resetPassword/rejected',
-          'auth/changePassword/rejected'
+          'auth/changePassword/rejected',
+          'auth/updateProfile/rejected'
         ].includes(action.type),
         (state, action) => { state.loading = false; state.error = action.payload; }
       );
